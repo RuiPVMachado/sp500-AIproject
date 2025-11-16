@@ -1,0 +1,9 @@
+pandas>=2.1
+numpy>=1.26
+matplotlib>=3.8
+seaborn>=0.13
+scikit-learn>=1.3
+plotly>=5.17
+flask>=3.0
+tensorflow>=2.13
+notebook>=7.0
