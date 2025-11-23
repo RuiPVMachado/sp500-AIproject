@@ -39,6 +39,11 @@ sp500-AIproject/
    python -m src.data.load_data
    ```
    This will print the date range, number of rows, column dtypes and missing-value counts.
+4. **Build the processed dataset (lags, targets, scaling)**
+   ```powershell
+   python scripts/Sprint01US03_Preprocessing_FeatureEngineering.py
+   ```
+   The script saves `data/processed/processed_data.csv` and prints the train/test split info.
 
 ## Next milestones
 
