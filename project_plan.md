@@ -63,3 +63,4 @@ If I follow this plan, I’ll have a working prototype that I can explain confid
 ## 7. Progress log
 
 - **2025-11-16** – Organized the repository structure (src/, data/, notebooks/, docs/), moved the raw CSV to `data/raw/sp500.csv`, added a `requirements.txt` + `.gitignore`, and created `src/data/load_data.py`. Running `python -m src.data.load_data` now prints the dataset overview for quick sanity checks.
+- **2025-11-23** – Completed Sprint 1 US-03: added the preprocessing pipeline (`src/data/pipeline.py`) plus demo script `scripts/Sprint01US03_Preprocessing_FeatureEngineering.py`. The script engineers lags/returns, creates regression & classification targets, scales features using a temporal split, and writes `data/processed/processed_data.csv`.
