@@ -70,6 +70,7 @@ def main() -> None:
     y_test = y_test[TARGET_COL].values
 
     # Define models with simple, explainable settings -----------------------
+    # Keep hyperparameters minimal so the demo stays quick and clear.
     models = {
         "LinearRegression": LinearRegression(),
         "Ridge(alpha=1.0)": Ridge(alpha=1.0),

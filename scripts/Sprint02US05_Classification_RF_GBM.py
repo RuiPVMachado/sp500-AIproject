@@ -16,7 +16,14 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, precision_score, recall_score, f1_score
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    precision_score,
+    recall_score,
+    f1_score,
+)
 from sklearn.model_selection import GridSearchCV
 
 # ---------------------------------------------------------------------------
@@ -49,7 +56,7 @@ def train_test_split_time(df: pd.DataFrame, ratio: float = TRAIN_RATIO) -> Tuple
 
 
 def evaluate(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
-    """Compute core classification metrics."""
+    """Compute core classification metrics for compact reporting."""
     return {
         "Accuracy": accuracy_score(y_true, y_pred),
         "Precision": precision_score(y_true, y_pred, zero_division=0),
@@ -94,6 +101,7 @@ def main() -> None:
     y_test = y_test[TARGET_COL].values
 
     # Fit models ------------------------------------------------------------
+    # Keep grids tiny so the script runs fast in class.
     rf_model = fit_random_forest(X_train, y_train)
     gb_model = fit_gradient_boosting(X_train, y_train)
 

@@ -60,6 +60,7 @@ def train_test_split_sequences(X: np.ndarray, y: np.ndarray, ratio: float = TRAI
 
 
 def build_model(input_shape: Tuple[int, int]) -> tf.keras.Model:
+    # Small LSTM stack to keep training time short for class demos.
     model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=input_shape),
         tf.keras.layers.LSTM(32, return_sequences=False),
@@ -79,6 +80,7 @@ def main() -> None:
     X_train, X_test, y_train, y_test = train_test_split_sequences(X, y, TRAIN_RATIO)
 
     # Build and train -------------------------------------------------------
+    # Keep epochs small; increase if you want better fit at the cost of time.
     model = build_model(input_shape=(SEQ_LEN, X.shape[-1]))
     history = model.fit(
         X_train,
