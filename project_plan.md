@@ -67,3 +67,4 @@ If I follow this plan, I’ll have a working prototype that I can explain confid
 - **2025-12-16** – Completed Sprint 2 US-04: added `scripts/Sprint02US04_BaselineLinearModels.py` to train Linear, Ridge and Lasso on `processed_data.csv` with MAE/MSE/RMSE output.
 - **2025-12-16** – Completed Sprint 2 US-05: added `scripts/Sprint02US05_Classification_RF_GBM.py` to train Random Forest and Gradient Boosting on `target_direction`, print Accuracy/Precision/Recall/F1 plus confusion matrices, and save `models/rf.pkl` and `models/gbm.pkl`.
 - **2025-12-16** – Completed Sprint 2 US-06: added `scripts/Sprint02US06_LSTM_TimeSeries.py` to train a small LSTM (seq_len=12, 5 epochs) on `target_price_next`, report RMSE, and save `models/lstm_model.h5`.
+- **2025-12-16** – Completed Sprint 3 US-07: added `scripts/Sprint03US07_PCA.py` to run PCA on processed features, save explained-variance and 2D scatter plots to `docs/pca_explained_variance.png` and `docs/pca_scatter.png`.
