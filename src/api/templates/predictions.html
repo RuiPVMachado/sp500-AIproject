@@ -1,0 +1,199 @@
+{% extends "base.html" %} {% block title %}Future Predictions - S&P 500
+Dashboard{% endblock %} {% block content %}
+<h1 style="margin-bottom: 1.5rem; color: #1a1a2e">
+  🔮 S&P 500 Future Predictions (2024-2027)
+</h1>
+
+<div class="card">
+  <h2>📈 Price Forecast</h2>
+  <p style="color: #64748b; margin-bottom: 1rem">
+    Predictions based on Random Forest & Gradient Boosting models trained on
+    150+ years of historical data.
+    <br /><em
+      >Note: These are model-based projections, not financial advice.</em
+    >
+  </p>
+  <div id="forecastChart" class="chart" style="min-height: 500px"></div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>📊 Prediction Summary</h2>
+    <div id="summaryStats"></div>
+  </div>
+
+  <div class="card">
+    <h2>📅 Monthly Predictions</h2>
+    <div style="max-height: 400px; overflow-y: auto">
+      <table id="predictionsTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Predicted Price</th>
+            <th>Direction</th>
+            <th>Monthly Return</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>📉 Predicted Returns Distribution</h2>
+  <div id="returnsChart" class="chart" style="min-height: 300px"></div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  fetch("/api/future_predictions")
+    .then((r) => r.json())
+    .then((data) => {
+      // Combine historical and predictions
+      const histDates = data.historical.map((d) => d.Date);
+      const histPrices = data.historical.map((d) => d.SP500);
+
+      const predDates = data.predictions.map((d) => d.date);
+      const predPrices = data.predictions.map((d) => d.predicted_price);
+      const directions = data.predictions.map((d) => d.direction);
+      const returns = data.predictions.map((d) => d.monthly_return);
+
+      // Main forecast chart
+      Plotly.newPlot(
+        "forecastChart",
+        [
+          {
+            x: histDates,
+            y: histPrices,
+            type: "scatter",
+            mode: "lines",
+            name: "Historical",
+            line: { color: "#2563eb", width: 2 },
+          },
+          {
+            x: predDates,
+            y: predPrices,
+            type: "scatter",
+            mode: "lines+markers",
+            name: "Predicted",
+            line: { color: "#10b981", width: 2, dash: "dot" },
+            marker: {
+              size: 6,
+              color: directions.map((d) =>
+                d === "UP" ? "#10b981" : "#ef4444"
+              ),
+            },
+          },
+        ],
+        {
+          margin: { t: 40, r: 40, b: 60, l: 80 },
+          xaxis: { title: "Date", tickangle: -45 },
+          yaxis: { title: "S&P 500 (Normalized)" },
+          legend: { x: 0, y: 1.1, orientation: "h" },
+          shapes: [
+            {
+              type: "line",
+              x0: data.last_actual_date,
+              x1: data.last_actual_date,
+              y0: 0,
+              y1: 1,
+              yref: "paper",
+              line: { color: "#f59e0b", width: 2, dash: "dash" },
+            },
+          ],
+          annotations: [
+            {
+              x: data.last_actual_date,
+              y: 1.05,
+              yref: "paper",
+              text: "Last Actual Data",
+              showarrow: false,
+              font: { color: "#f59e0b" },
+            },
+          ],
+        }
+      );
+
+      // Summary stats
+      const lastPred = data.predictions[data.predictions.length - 1];
+      const upMonths = directions.filter((d) => d === "UP").length;
+      const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+      const totalReturn =
+        (lastPred.predicted_price / data.last_actual_price - 1) * 100;
+
+      document.getElementById("summaryStats").innerHTML = `
+            <div class="grid grid-2" style="gap: 1rem;">
+                <div class="kpi">
+                    <div class="kpi-value" style="font-size: 1.8rem;">${data.last_actual_price.toFixed(
+                      2
+                    )}</div>
+                    <div class="kpi-label">Last Actual (${
+                      data.last_actual_date
+                    })</div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-value" style="font-size: 1.8rem; color: #10b981;">${lastPred.predicted_price.toFixed(
+                      2
+                    )}</div>
+                    <div class="kpi-label">Predicted Dec 2027</div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-value" style="font-size: 1.5rem; color: ${
+                      totalReturn > 0 ? "#10b981" : "#ef4444"
+                    };">
+                        ${totalReturn > 0 ? "+" : ""}${totalReturn.toFixed(1)}%
+                    </div>
+                    <div class="kpi-label">Total Predicted Change</div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-value" style="font-size: 1.5rem;">${upMonths}/${
+        data.predictions.length
+      }</div>
+                    <div class="kpi-label">Up Months Predicted</div>
+                </div>
+            </div>
+        `;
+
+      // Predictions table
+      const tbody = document.querySelector("#predictionsTable tbody");
+      data.predictions.forEach((row) => {
+        const badge = row.direction === "UP" ? "badge-up" : "badge-down";
+        const arrow = row.direction === "UP" ? "↑" : "↓";
+        tbody.innerHTML += `<tr>
+                <td>${row.date}</td>
+                <td>${row.predicted_price.toFixed(4)}</td>
+                <td><span class="badge ${badge}">${arrow} ${
+          row.direction
+        }</span></td>
+                <td style="color: ${
+                  row.monthly_return > 0 ? "#10b981" : "#ef4444"
+                }">
+                    ${
+                      row.monthly_return > 0 ? "+" : ""
+                    }${row.monthly_return.toFixed(2)}%
+                </td>
+            </tr>`;
+      });
+
+      // Returns histogram
+      Plotly.newPlot(
+        "returnsChart",
+        [
+          {
+            x: returns,
+            type: "histogram",
+            marker: {
+              color: returns.map((r) => (r > 0 ? "#10b981" : "#ef4444")),
+            },
+            nbinsx: 20,
+          },
+        ],
+        {
+          margin: { t: 20, r: 20, b: 40, l: 60 },
+          xaxis: { title: "Monthly Return (%)" },
+          yaxis: { title: "Frequency" },
+        }
+      );
+    });
+</script>
+{% endblock %}

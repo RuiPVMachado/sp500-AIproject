@@ -1,0 +1,180 @@
+{% extends "base.html" %} {% block title %}Clustering - S&P 500 Dashboard{%
+endblock %} {% block content %}
+<h1 style="margin-bottom: 1.5rem; color: #1a1a2e">
+  🎯 Clustering & Anomaly Detection
+</h1>
+
+<div class="grid grid-2">
+  <!-- K-Means Results -->
+  <div class="card">
+    <h2>📊 K-Means Market Regimes</h2>
+    <div id="clusterPie" class="chart" style="min-height: 300px"></div>
+  </div>
+
+  <!-- Cluster Stats -->
+  <div class="card">
+    <h2>📈 Regime Statistics</h2>
+    <table id="clusterTable">
+      <thead>
+        <tr>
+          <th>Regime</th>
+          <th>Count</th>
+          <th>Percentage</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>🕐 Market Regime Transitions Over Time</h2>
+  <div id="transitionChart" class="chart"></div>
+</div>
+
+<div class="grid grid-2">
+  <!-- Anomalies -->
+  <div class="card">
+    <h2>⚠️ DBSCAN Anomalies</h2>
+    <div id="anomalyStats"></div>
+    <div id="anomalyChart" class="chart" style="min-height: 300px"></div>
+  </div>
+
+  <!-- Anomaly List -->
+  <div class="card">
+    <h2>🔴 Detected Anomalies</h2>
+    <table id="anomalyTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>SP500</th>
+          <th>Return 1m</th>
+          <th>Type</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  // Load cluster data
+  fetch("/api/clusters")
+    .then((r) => r.json())
+    .then((data) => {
+      // Pie chart
+      const labels = Object.keys(data.cluster_distribution).map(
+        (k) => `Regime ${k}`
+      );
+      const values = Object.values(data.cluster_distribution);
+
+      Plotly.newPlot(
+        "clusterPie",
+        [
+          {
+            labels: labels,
+            values: values,
+            type: "pie",
+            marker: { colors: ["#2563eb", "#10b981", "#f59e0b", "#ef4444"] },
+            textinfo: "label+percent",
+          },
+        ],
+        { margin: { t: 20, r: 20, b: 20, l: 20 } }
+      );
+
+      // Table
+      const tbody = document.querySelector("#clusterTable tbody");
+      const total = values.reduce((a, b) => a + b, 0);
+      Object.entries(data.cluster_distribution).forEach(([k, v]) => {
+        tbody.innerHTML += `<tr>
+                <td>Regime ${k}</td>
+                <td>${v}</td>
+                <td>${((v / total) * 100).toFixed(1)}%</td>
+            </tr>`;
+      });
+
+      // Transition chart
+      const dates = data.recent_data.map((d) => d.Date);
+      const clusters = data.recent_data.map((d) => d.cluster);
+      const prices = data.recent_data.map((d) => d.SP500);
+
+      Plotly.newPlot(
+        "transitionChart",
+        [
+          {
+            x: dates,
+            y: prices,
+            type: "scatter",
+            mode: "markers",
+            marker: {
+              color: clusters,
+              colorscale: "Viridis",
+              size: 8,
+            },
+            name: "SP500",
+          },
+        ],
+        {
+          margin: { t: 20, r: 20, b: 40, l: 60 },
+          xaxis: { title: "Date" },
+          yaxis: { title: "SP500 (Normalized)" },
+        }
+      );
+    });
+
+  // Load anomaly data
+  fetch("/api/anomalies")
+    .then((r) => r.json())
+    .then((data) => {
+      document.getElementById("anomalyStats").innerHTML = `
+            <p style="font-size: 1.5rem; color: #ef4444; font-weight: bold;">${
+              data.total_anomalies
+            } anomalies</p>
+            <p style="color: #64748b;">${data.anomaly_pct.toFixed(
+              2
+            )}% of all data points</p>
+        `;
+
+      // Anomaly scatter
+      const dates = data.anomalies.map((d) => d.Date);
+      const returns = data.anomalies.map((d) => d.return_1m);
+
+      Plotly.newPlot(
+        "anomalyChart",
+        [
+          {
+            x: dates,
+            y: returns,
+            type: "bar",
+            marker: {
+              color: returns.map((r) => (r < 0 ? "#ef4444" : "#10b981")),
+            },
+          },
+        ],
+        {
+          margin: { t: 20, r: 20, b: 40, l: 60 },
+          xaxis: { title: "Date" },
+          yaxis: { title: "1-Month Return" },
+        }
+      );
+
+      // Anomaly table
+      const tbody = document.querySelector("#anomalyTable tbody");
+      data.anomalies.slice(0, 15).forEach((row) => {
+        const type =
+          row.return_1m < -0.1
+            ? "Crash"
+            : row.return_1m > 0.1
+            ? "Spike"
+            : "Other";
+        const badge = row.return_1m < 0 ? "badge-down" : "badge-up";
+        tbody.innerHTML += `<tr>
+                <td>${row.Date}</td>
+                <td>${row.SP500?.toFixed(4) || "N/A"}</td>
+                <td>${row.return_1m?.toFixed(4) || "N/A"}</td>
+                <td><span class="badge ${badge}">${type}</span></td>
+            </tr>`;
+      });
+    });
+</script>
+{% endblock %}

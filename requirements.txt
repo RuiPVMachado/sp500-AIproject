@@ -7,3 +7,5 @@ plotly>=5.17
 flask>=3.0
 tensorflow>=2.13
 notebook>=7.0
+requests>=2.31
+joblib>=1.3
