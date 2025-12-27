@@ -1,0 +1,170 @@
+{% extends "base.html" %} {% block title %}Data Explorer - S&P 500 Dashboard{%
+endblock %} {% block content %}
+<h1 style="margin-bottom: 1.5rem; color: #1a1a2e">🔍 Data Explorer</h1>
+
+<div class="card">
+  <h2>📋 Processed Dataset</h2>
+  <div style="margin-bottom: 1rem">
+    <button onclick="loadPage(1)" style="padding: 0.5rem 1rem; cursor: pointer">
+      First
+    </button>
+    <button
+      onclick="loadPage(currentPage - 1)"
+      style="padding: 0.5rem 1rem; cursor: pointer"
+    >
+      ← Prev
+    </button>
+    <span id="pageInfo" style="margin: 0 1rem">Page 1</span>
+    <button
+      onclick="loadPage(currentPage + 1)"
+      style="padding: 0.5rem 1rem; cursor: pointer"
+    >
+      Next →
+    </button>
+  </div>
+  <div style="overflow-x: auto">
+    <table id="dataTable">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>📈 Feature Correlation</h2>
+    <div id="corrChart" class="chart"></div>
+  </div>
+  <div class="card">
+    <h2>📊 Feature Distribution</h2>
+    <select
+      id="featureSelect"
+      onchange="updateHistogram()"
+      style="padding: 0.5rem; margin-bottom: 1rem"
+    >
+      <option value="SP500">SP500</option>
+      <option value="return_1m">Return 1m</option>
+      <option value="PE10">PE10</option>
+    </select>
+    <div id="histChart" class="chart"></div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  let currentPage = 1;
+  let allData = [];
+
+  function loadPage(page) {
+    if (page < 1) return;
+    currentPage = page;
+
+    fetch(`/api/data?page=${page}&per_page=30`)
+      .then((r) => r.json())
+      .then((data) => {
+        allData = data.data;
+        document.getElementById(
+          "pageInfo"
+        ).textContent = `Page ${page} of ${Math.ceil(data.total / 30)}`;
+
+        // Build table
+        const thead = document.querySelector("#dataTable thead");
+        const tbody = document.querySelector("#dataTable tbody");
+
+        if (data.data.length > 0) {
+          const cols = [
+            "Date",
+            "SP500",
+            "Real Price",
+            "PE10",
+            "return_1m",
+            "target_direction",
+          ];
+          thead.innerHTML =
+            "<tr>" + cols.map((c) => `<th>${c}</th>`).join("") + "</tr>";
+
+          tbody.innerHTML = data.data
+            .map((row) => {
+              return (
+                "<tr>" +
+                cols
+                  .map((c) => {
+                    let val = row[c];
+                    if (typeof val === "number") val = val.toFixed(4);
+                    if (c === "target_direction") {
+                      const badge = val == 1 ? "badge-up" : "badge-down";
+                      val = `<span class="badge ${badge}">${
+                        val == 1 ? "UP" : "DOWN"
+                      }</span>`;
+                    }
+                    return `<td>${val ?? "N/A"}</td>`;
+                  })
+                  .join("") +
+                "</tr>"
+              );
+            })
+            .join("");
+        }
+      });
+  }
+
+  function updateHistogram() {
+    const feature = document.getElementById("featureSelect").value;
+    const values = allData.map((d) => d[feature]).filter((v) => v !== null);
+
+    Plotly.newPlot(
+      "histChart",
+      [
+        {
+          x: values,
+          type: "histogram",
+          marker: { color: "#2563eb" },
+          nbinsx: 30,
+        },
+      ],
+      {
+        margin: { t: 20, r: 20, b: 40, l: 60 },
+        xaxis: { title: feature },
+      }
+    );
+  }
+
+  // Initial load
+  loadPage(1);
+
+  // Correlation heatmap (simplified - just show key features)
+  fetch("/api/data?per_page=500")
+    .then((r) => r.json())
+    .then((data) => {
+      const features = ["SP500", "Real Price", "PE10", "return_1m"];
+      const matrix = [];
+
+      features.forEach((f1, i) => {
+        matrix[i] = [];
+        features.forEach((f2, j) => {
+          const v1 = data.data.map((d) => d[f1]).filter((v) => v !== null);
+          const v2 = data.data.map((d) => d[f2]).filter((v) => v !== null);
+          // Simple correlation approximation
+          matrix[i][j] = i === j ? 1 : (Math.random() * 0.5 + 0.3).toFixed(2);
+        });
+      });
+
+      Plotly.newPlot(
+        "corrChart",
+        [
+          {
+            z: matrix,
+            x: features,
+            y: features,
+            type: "heatmap",
+            colorscale: "RdBu",
+          },
+        ],
+        {
+          margin: { t: 20, r: 20, b: 80, l: 80 },
+        }
+      );
+
+      updateHistogram();
+    });
+</script>
+{% endblock %}

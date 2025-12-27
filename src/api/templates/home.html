@@ -1,0 +1,99 @@
+{% extends "base.html" %} {% block title %}Home - S&P 500 Dashboard{% endblock
+%} {% block content %}
+<h1 style="margin-bottom: 1.5rem; color: #1a1a2e">Dashboard Overview</h1>
+
+<!-- KPIs -->
+<div class="card">
+  <div class="grid grid-4">
+    <div class="kpi">
+      <div class="kpi-value">{{ kpis.total_records }}</div>
+      <div class="kpi-label">Total Records</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value">{{ kpis.n_clusters }}</div>
+      <div class="kpi-label">Market Regimes</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value">{{ kpis.n_anomalies }}</div>
+      <div class="kpi-label">Anomalies Detected</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value">{{ kpis.models_loaded }}/3</div>
+      <div class="kpi-label">Models Loaded</div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <!-- S&P 500 Chart -->
+  <div class="card">
+    <h2>📈 S&P 500 Historical Price</h2>
+    <div id="priceChart" class="chart"></div>
+  </div>
+
+  <!-- Cluster Distribution -->
+  <div class="card">
+    <h2>🎯 Market Regime Distribution</h2>
+    <div id="clusterChart" class="chart"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>ℹ️ Dataset Info</h2>
+  <p style="color: #64748b">
+    Date Range: <strong>{{ kpis.date_range }}</strong>
+  </p>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  // Load price data
+  fetch("/api/clusters")
+    .then((r) => r.json())
+    .then((data) => {
+      // Price chart
+      const dates = data.recent_data.map((d) => d.Date);
+      const prices = data.recent_data.map((d) => d.SP500);
+      const clusters = data.recent_data.map((d) => d.cluster);
+
+      Plotly.newPlot(
+        "priceChart",
+        [
+          {
+            x: dates,
+            y: prices,
+            type: "scatter",
+            mode: "lines",
+            line: { color: "#2563eb", width: 2 },
+            name: "S&P 500",
+          },
+        ],
+        {
+          margin: { t: 20, r: 20, b: 40, l: 60 },
+          xaxis: { title: "Date" },
+          yaxis: { title: "Price (Normalized)" },
+        }
+      );
+
+      // Cluster distribution pie
+      const clusterLabels = Object.keys(data.cluster_distribution).map(
+        (k) => `Regime ${k}`
+      );
+      const clusterValues = Object.values(data.cluster_distribution);
+
+      Plotly.newPlot(
+        "clusterChart",
+        [
+          {
+            labels: clusterLabels,
+            values: clusterValues,
+            type: "pie",
+            marker: { colors: ["#2563eb", "#10b981", "#f59e0b", "#ef4444"] },
+          },
+        ],
+        {
+          margin: { t: 20, r: 20, b: 20, l: 20 },
+        }
+      );
+    });
+</script>
+{% endblock %}

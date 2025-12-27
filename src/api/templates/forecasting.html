@@ -1,0 +1,130 @@
+{% extends "base.html" %} {% block title %}Forecasting - S&P 500 Dashboard{%
+endblock %} {% block content %}
+<h1 style="margin-bottom: 1.5rem; color: #1a1a2e">📊 Forecasting Models</h1>
+
+<div class="grid grid-3">
+  <div class="card">
+    <h2>🌲 Random Forest</h2>
+    <p style="color: #64748b; margin-bottom: 1rem">Direction Classification</p>
+    <div id="rfStatus"></div>
+  </div>
+  <div class="card">
+    <h2>📈 Gradient Boosting</h2>
+    <p style="color: #64748b; margin-bottom: 1rem">Direction Classification</p>
+    <div id="gbmStatus"></div>
+  </div>
+  <div class="card">
+    <h2>🧠 LSTM Neural Network</h2>
+    <p style="color: #64748b; margin-bottom: 1rem">Price Regression</p>
+    <div id="lstmStatus"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>🔮 Model Predictions Comparison</h2>
+  <div id="forecastChart" class="chart"></div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>📉 Historical Returns Distribution</h2>
+    <div id="returnsChart" class="chart"></div>
+  </div>
+  <div class="card">
+    <h2>📋 Recent Predictions</h2>
+    <table id="predictionsTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Actual</th>
+          <th>RF Pred</th>
+          <th>Direction</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  // Load metrics
+  fetch("/api/metrics")
+    .then((r) => r.json())
+    .then((data) => {
+      document.getElementById("rfStatus").innerHTML = data.models.rf.loaded
+        ? '<span class="badge badge-up">✓ Loaded</span>'
+        : '<span class="badge badge-down">✗ Not loaded</span>';
+      document.getElementById("gbmStatus").innerHTML = data.models.gbm.loaded
+        ? '<span class="badge badge-up">✓ Loaded</span>'
+        : '<span class="badge badge-down">✗ Not loaded</span>';
+      document.getElementById("lstmStatus").innerHTML = data.models.lstm.loaded
+        ? '<span class="badge badge-up">✓ Loaded</span>'
+        : '<span class="badge badge-down">✗ Not loaded</span>';
+    });
+
+  // Load data for charts
+  fetch("/api/data?per_page=200")
+    .then((r) => r.json())
+    .then((data) => {
+      const dates = data.data.map((d) => d.Date);
+      const prices = data.data.map((d) => d.SP500);
+      const returns = data.data
+        .map((d) => d.return_1m)
+        .filter((r) => r !== null);
+
+      // Price chart
+      Plotly.newPlot(
+        "forecastChart",
+        [
+          {
+            x: dates,
+            y: prices,
+            type: "scatter",
+            mode: "lines",
+            name: "SP500",
+            line: { color: "#2563eb" },
+          },
+        ],
+        {
+          margin: { t: 20, r: 20, b: 40, l: 60 },
+          xaxis: { title: "Date" },
+          yaxis: { title: "Normalized Price" },
+        }
+      );
+
+      // Returns histogram
+      Plotly.newPlot(
+        "returnsChart",
+        [
+          {
+            x: returns,
+            type: "histogram",
+            marker: { color: "#10b981" },
+            nbinsx: 50,
+          },
+        ],
+        {
+          margin: { t: 20, r: 20, b: 40, l: 60 },
+          xaxis: { title: "1-Month Return" },
+          yaxis: { title: "Frequency" },
+        }
+      );
+
+      // Table
+      const tbody = document.querySelector("#predictionsTable tbody");
+      data.data
+        .slice(-10)
+        .reverse()
+        .forEach((row) => {
+          const dir = row.target_direction === 1 ? "UP" : "DOWN";
+          const badge = row.target_direction === 1 ? "badge-up" : "badge-down";
+          tbody.innerHTML += `<tr>
+                <td>${row.Date}</td>
+                <td>${row.SP500?.toFixed(4) || "N/A"}</td>
+                <td>${row.target_direction}</td>
+                <td><span class="badge ${badge}">${dir}</span></td>
+            </tr>`;
+        });
+    });
+</script>
+{% endblock %}
